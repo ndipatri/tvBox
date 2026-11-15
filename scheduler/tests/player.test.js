@@ -448,15 +448,17 @@ test('a held photo gives way when something else is to play', async () => {
 
 // ---- The tilt switch ----
 
-// A box with a tilt switch on GPIO17 (closed while portrait), its reading
-// set with b.switchTo('open' | 'closed'); b.at(s) ticks at s seconds in.
-function tiltBox(start = 'closed') {
-  const withSwitch = Object.assign({}, config, { box: Object.assign({}, config.box, { tiltSwitch: { gpio: 17, closed: 'portrait' } }) });
+// A box with a tilt switch on GPIO17, switched on on its website (closed
+// while portrait unless `closed` says otherwise), its reading set with
+// b.switchTo('open' | 'closed'); b.at(s) ticks at s seconds in. b.reads
+// counts the pin reads.
+function tiltBox(start = 'closed', saved = { on: true, closed: 'portrait' }) {
   let reading = start;
   const b = box({ photos: ['00001-tall.jpg', '00002-wide.jpg'] }, {
-    config: withSwitch,
-    readTilt: async (gpio) => { assert.equal(gpio, 17); return reading; },
+    readTilt: async (gpio) => { assert.equal(gpio, 17); b.reads++; return reading; },
   });
+  b.reads = 0;
+  if (saved) b.files[ROOT + '/tilt.json'] = JSON.stringify(saved);
   b.files[ROOT + '/override.json'] = JSON.stringify({ tags: ['upload'], filters: [], setAt: +at(10, 20, 17), expires: null, untilCleared: true });
   const t0 = +at(10, 20, 18);
   b.switchTo = (r) => { reading = r; };
@@ -507,17 +509,61 @@ test('the website\'s choice stays until the tilt switch moves', async () => {
   assert.equal(b.screen(), 'portrait', 'it follows the switch once it moves');
 });
 
-test('a box with no tilt switch set never reads one', async () => {
-  let reads = 0;
-  const noSwitch = Object.assign({}, config, { box: Object.assign({}, config.box, { tiltSwitch: null }) });
-  const b = box({ photos: ['00001-a.jpg'] }, { config: noSwitch, readTilt: async () => { reads++; return 'open'; } });
-  for (let s = 0; s < 5; s++) await b.tick();
-  assert.equal(reads, 0);
+test('a box with the tilt switch off never reads one', async () => {
+  // Nothing saved (as shipped), with the pin reading open as an unwired one does.
+  const b = tiltBox('open', null);
+  for (let s = 0; s < 5; s++) await b.at(s);
+  assert.equal(b.reads, 0);
+  assert.equal(b.screen(), 'portrait', 'the TV stays portrait');
+  // Saved off: the same.
+  const c = tiltBox('open', { on: false, closed: 'portrait' });
+  for (let s = 0; s < 5; s++) await c.at(s);
+  assert.equal(c.reads, 0);
+  // Saved but unreadable: off, said once.
+  const d = tiltBox('open', null);
+  d.files[ROOT + '/tilt.json'] = 'not json';
+  for (let s = 0; s < 5; s++) await d.at(s);
+  assert.equal(d.reads, 0);
+  const said = d.logs.filter((l) => l === "WARNING: Couldn't read " + ROOT + '/tilt.json: not reading a tilt switch.');
+  assert.equal(said.length, 1, d.logs.join('\n'));
+});
+
+test('the box follows the tilt switch as soon as it is switched on', async () => {
+  const b = tiltBox('open', null);
+  for (let s = 0; s <= 3; s++) await b.at(s);
+  assert.equal(b.screen(), 'portrait');
+  b.files[ROOT + '/tilt.json'] = JSON.stringify({ on: true, closed: 'portrait' });
+  await b.at(4);
+  await b.at(5);
+  assert.equal(b.screen(), 'portrait', 'not before it has read open for 2 seconds');
+  await b.at(6);
+  assert.equal(b.screen(), 'landscape', 'open, so landscape');
+  // Switched off: no more reads, and the TV stays as the website says.
+  b.files[ROOT + '/tilt.json'] = JSON.stringify({ on: false, closed: 'portrait' });
+  const reads = b.reads;
+  b.files[ROOT + '/screen.json'] = JSON.stringify({ orientation: 'portrait' });
+  b.switchTo('closed');
+  for (let s = 7; s <= 12; s++) await b.at(s);
+  assert.equal(b.reads, reads, 'not read while off');
+  assert.equal(b.screen(), 'portrait');
+});
+
+test('a tilt switch that reads the wrong way round is followed the other way', async () => {
+  const b = tiltBox('closed', { on: true, closed: 'landscape' });
+  for (let s = 0; s <= 3; s++) await b.at(s);
+  assert.equal(b.screen(), 'landscape', 'closed is landscape');
+  b.switchTo('open');
+  for (let s = 4; s <= 7; s++) await b.at(s);
+  assert.equal(b.screen(), 'portrait');
+  // Told it's the usual way round, while it stays open: followed afresh.
+  b.files[ROOT + '/tilt.json'] = JSON.stringify({ on: true, closed: 'portrait' });
+  for (let s = 8; s <= 11; s++) await b.at(s);
+  assert.equal(b.screen(), 'landscape', 'open is landscape now');
 });
 
 test('a tilt switch that can\'t be read is logged once', async () => {
-  const withSwitch = Object.assign({}, config, { box: Object.assign({}, config.box, { tiltSwitch: { gpio: 17, closed: 'portrait' } }) });
-  const b = box({ photos: ['00001-a.jpg'] }, { config: withSwitch, readTilt: async () => { throw new Error('spawn gpioget ENOENT'); } });
+  const b = box({ photos: ['00001-a.jpg'] }, { readTilt: async () => { throw new Error('spawn gpioget ENOENT'); } });
+  b.files[ROOT + '/tilt.json'] = JSON.stringify({ on: true, closed: 'portrait' });
   for (let s = 0; s < 5; s++) { b.now = new Date(+at(10, 20, 18) + s * 1000); await b.tick(); }
   const warnings = b.logs.filter((l) => l.startsWith("WARNING: Couldn't read the tilt switch on GPIO17: "));
   assert.equal(warnings.length, 1, b.logs.join('\n'));

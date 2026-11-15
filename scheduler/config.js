@@ -45,12 +45,12 @@ module.exports = {
     // The same, for when the TV is turned to landscape on its mount (chosen
     // under TV on the website): 0. Upside down: Flip the picture, as above.
     landscapeRotate: 0,
-    // A tilt switch on the back of the TV, so the box notices by itself when
-    // the TV is turned (see the README). null: none, and the TV buttons on
-    // the website are the only way. Once one is wired between GPIO17
-    // (pin 11) and ground (pin 9): { gpio: 17, closed: 'portrait' }, where
-    // `closed` is the way the TV faces while the switch is closed.
-    tiltSwitch: { gpio: 17, closed: 'portrait' },
+    // The pin a tilt switch on the back of the TV is wired to, between it
+    // (GPIO17, pin 11) and ground (pin 9), so the box notices by itself when
+    // the TV is turned (see the README). Whether a box has one, and which way
+    // it reads, is switched on that box's website (under TV, saved in
+    // ~/video-scheduler/tilt.json), and is off until then.
+    tiltGpio: 17,
     // The website: http://<the box's name>.local/ (port 80 needs no number).
     webPort: 80,
     // systemd-timesyncd creates this once the clock is set from the network.

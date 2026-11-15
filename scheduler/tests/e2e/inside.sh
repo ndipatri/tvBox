@@ -331,7 +331,7 @@ check "a video after the photos is fitted whole again (panscan back to 0)" \
 echo "== Turning the TV"
 check "setup installs gpiod and lets the box's user read the pins, for a tilt switch" \
   bash -c "command -v gpioget >/dev/null && id -nG pi | tr ' ' '\n' | grep -qx gpio"
-check "with no tilt switch set, the box never warns about one" bash -c "! logged \"Couldn't read the tilt switch\""
+check "with the tilt switch off (as shipped), the box never warns about one" bash -c "! logged \"Couldn't read the tilt switch\""
 turn_from=$(($(wc -l < "$LOG") + 1))
 check "the website says the TV is portrait at first" bash -c "curl -fsS $SITE/api/screen | grep -q '\"portrait\"'"
 echo "   $(post /api/screen '{"orientation":"landscape"}')"

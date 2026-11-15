@@ -341,6 +341,45 @@ test('the page offers Flip the picture', async () => {
   assertScriptCompiles(page);
 });
 
+test('the website switches the tilt switch on and off', async () => {
+  const logs = [];
+  const s = site({}, { log: (m) => logs.push(m) });
+  assert.deepEqual((await s.call('GET', '/api/tilt')).json, { on: false, closed: 'portrait' }, 'off as shipped');
+  const r = await s.call('POST', '/api/tilt', { on: true });
+  assert.equal(r.status, 200, r.body);
+  assert.equal(r.json.message, 'The box follows the tilt switch on the TV.');
+  assert.ok(logs.includes('Tilt switch: on, closed while portrait (from the website).'), logs.join('\n'));
+  assert.deepEqual(JSON.parse(s.files[ROOT + '/tilt.json']), { on: true, closed: 'portrait' });
+  await s.call('POST', '/api/tilt', { on: true, closed: 'landscape' });
+  assert.deepEqual((await s.call('GET', '/api/tilt')).json, { on: true, closed: 'landscape' });
+  const off = await s.call('POST', '/api/tilt', { on: false });
+  assert.equal(off.json.message, "The box doesn't read a tilt switch. Tap Portrait or Landscape when you turn the TV.");
+  assert.ok(logs.includes('Tilt switch: off (from the website).'), logs.join('\n'));
+  assert.deepEqual((await s.call('GET', '/api/tilt')).json, { on: false, closed: 'landscape' }, 'which way round is kept');
+});
+
+test("the website refuses a tilt setting it doesn't understand", async () => {
+  const s = site();
+  for (const body of [{}, { on: 'yes' }, { on: true, closed: 'sideways' }]) {
+    const r = await s.call('POST', '/api/tilt', body);
+    assert.equal(r.status, 400, JSON.stringify(body));
+  }
+  assert.ok(!((ROOT + '/tilt.json') in s.files));
+});
+
+test('the page offers the tilt switch', async () => {
+  const page = (await site().call('GET', '/advanced')).body;
+  const body = page.slice(page.indexOf('<main>'));
+  const tv = body.indexOf('<h2>TV</h2>');
+  const section = body.slice(tv, body.indexOf('<h2>', tv + 1));
+  assert.ok(section.includes('<input id="tilt" type="checkbox"> This TV has a tilt switch'), section);
+  assert.ok(section.includes('<input id="tiltwrong" type="checkbox"> The tilt switch gets it the wrong way round'), section);
+  const refresh = page.slice(page.indexOf('async function refresh()'), page.indexOf('let filterNames'));
+  assert.ok(refresh.includes("fetch('/api/tilt')") && refresh.includes('markTilt('), 'the saved setting is shown');
+  assert.ok(page.includes("post('/api/tilt', { on: $('tilt').checked, closed: $('tiltwrong').checked ? 'landscape' : 'portrait' })"), 'the switches save it');
+  assertScriptCompiles(page);
+});
+
 // ---- The address code ----
 
 test('the address code is on until switched off', async () => {

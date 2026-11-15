@@ -576,6 +576,22 @@ function createWebsite(options) {
       : 'The picture is the usual way up for a ' + orientation + ' TV.');
   }
 
+  // GET /api/tilt: whether the box follows a tilt switch on the TV, and the
+  // way the TV faces while it's closed. POST { on, closed }: switches it on
+  // or off, and (optionally) says which way round it reads. No PIN, like the
+  // TV buttons; the player starts or stops following it within a second.
+  function setTilt(body) {
+    const on = body && body.on;
+    const closed = body && body.closed;
+    if (on !== true && on !== false) return fail('Say true or false.');
+    if (closed !== undefined && !logic.ORIENTATIONS.includes(closed)) return fail('The TV is portrait or landscape.');
+    const saved = { on, closed: closed || logic.readTilt().closed };
+    writeText(logic.TILT_PATH, JSON.stringify(saved) + '\n');
+    log('Tilt switch: ' + (on ? 'on, closed while ' + saved.closed : 'off') + ' (from the website).');
+    return ok(on ? 'The box follows the tilt switch on the TV.'
+      : "The box doesn't read a tilt switch. Tap Portrait or Landscape when you turn the TV.");
+  }
+
   // GET /api/address-code: whether the TV shows the address code, and the
   // address. POST { show }: switches it, with no PIN, like the TV buttons.
   function addressCode() {
@@ -604,6 +620,7 @@ function createWebsite(options) {
     if (route === 'GET /api/filters') return json(200, logic.readRawFilters());
     if (route === 'GET /api/screen') return json(200, { orientation: logic.readScreen() });
     if (route === 'GET /api/flip') return json(200, logic.readFlip());
+    if (route === 'GET /api/tilt') return json(200, logic.readTilt());
     if (route === 'GET /api/address-code') return json(200, addressCode());
     if (route === 'POST /api/address-code') {
       let parsed;
@@ -619,6 +636,11 @@ function createWebsite(options) {
       let parsed;
       try { parsed = JSON.parse(body || '{}'); } catch (e) { return fail('Bad request.'); }
       return flipPicture(parsed);
+    }
+    if (route === 'POST /api/tilt') {
+      let parsed;
+      try { parsed = JSON.parse(body || '{}'); } catch (e) { return fail('Bad request.'); }
+      return setTilt(parsed);
     }
     if (route === 'POST /api/tags' || route === 'POST /api/filters') {
       let parsed;
@@ -870,6 +892,8 @@ const PAGE = `<!DOCTYPE html>
     <div class="grid"><button data-tv="portrait">Portrait</button><button data-tv="landscape">Landscape</button></div>
     <div class="hint">Picture upside down? Tap Flip the picture, and it turns over. It's saved for the way the TV faces now, and stays after the box restarts.</div>
     <button id="flip" aria-pressed="false">Flip the picture</button>
+    <label class="switch"><input id="tilt" type="checkbox"> This TV has a tilt switch, so the box notices by itself when it's turned</label>
+    <label class="switch"><input id="tiltwrong" type="checkbox"> The tilt switch gets it the wrong way round</label>
     <label class="switch"><input id="addresscode" type="checkbox"> Show the box's address on the TV</label>
     <div class="hint" id="address"></div>
   </div>
@@ -981,11 +1005,23 @@ const PAGE = `<!DOCTYPE html>
     }
   };
 
+  // The tilt switch: on or off, and which way round it reads ("wrong way
+  // round" is closed while landscape). The second only matters while it's on.
+  function markTilt(t) {
+    $('tilt').checked = t.on;
+    $('tiltwrong').checked = t.closed === 'landscape';
+    $('tiltwrong').disabled = !t.on;
+  }
+  const sendTilt = () => post('/api/tilt', { on: $('tilt').checked, closed: $('tiltwrong').checked ? 'landscape' : 'portrait' });
+  $('tilt').onchange = () => { $('tiltwrong').disabled = !$('tilt').checked; sendTilt(); };
+  $('tiltwrong').onchange = sendTilt;
+
   // The address code switch, and the address written beside it.
   $('addresscode').onchange = () => post('/api/address-code', { show: $('addresscode').checked });
   async function refresh() {
     try {
       flips = await (await fetch('/api/flip')).json();
+      markTilt(await (await fetch('/api/tilt')).json());
       markScreen((await (await fetch('/api/screen')).json()).orientation);
       const a = await (await fetch('/api/address-code')).json();
       $('addresscode').checked = a.show;
