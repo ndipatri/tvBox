@@ -1,6 +1,6 @@
 ## Context
 
-`player.js` took `config.box.tiltSwitch` (`{ gpio, closed }` or null) once at start and, when set, read the pin every tick with `tilt.js` (`gpioget --bias=pull-up --numeric`, so an unwired pin reads 1, open). `switchState.acted` starts null, so the first reading that holds for 2 seconds is saved to `screen.json` even if the TV hasn't moved. That's why a box with no switch, set on, went landscape a minute after every restart.
+`player.js` took `config.box.tiltSwitch` (`{ gpio, closed }` or null) once at start and, when set, read the pin every tick with `tilt.js` (`gpioget --bias=pull-up --numeric`, so an unwired pin reads 1, open). `switchState.acted` starts null, so the first reading that holds for 2 seconds is saved to `screen.json` even if the TV hasn't moved. So a box with no switch, set on, goes landscape a couple of seconds after every start.
 
 ## Decisions
 
@@ -24,4 +24,4 @@ The rehearsal has no GPIO. Its check "with no tilt switch set, the box never war
 
 ## Box-only
 
-On tvbox (pin reads open, no switch wired): after setup, the TV stays portrait across a restart. On the basement box: switch it on on its page and turn the TV.
+With the switch off (as shipped), a restart leaves the saved way alone however the pin reads (tried on tvbox: portrait kept across a restart with the pin reading open). A box with a switch, like tvbox and the basement box: switch it on on its page and turn the TV.

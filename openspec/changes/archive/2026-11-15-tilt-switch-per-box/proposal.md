@@ -1,6 +1,6 @@
 ## Why
 
-Whether a box has a tilt switch, and which way round it reads, is different for each box, but it's set in the shared `scheduler/config.js`. #84 set it on (`{ gpio: 17, closed: 'portrait' }`) there for the basement box, so every box now reads GPIO17. A box with no switch reads it open (the pin is pulled up), takes the TV as landscape, and, with the Halloween videos all portrait, shows black. This happened on tvbox on 2026-11-15, a minute after a restart. The README, the spec and the skill all still say the switch is off as shipped.
+Whether a box has a tilt switch, and which way round it reads, is different for each box, but it's set in the shared `scheduler/config.js`. #84 set it on (`{ gpio: 17, closed: 'portrait' }`) there for the basement box, so every box now reads GPIO17. A box with no switch reads it open (the pin is pulled up), takes the TV as landscape, and, with the Halloween videos all portrait, shows black. The README, the spec and the skill all still say the switch is off as shipped.
 
 ## What Changes
 
