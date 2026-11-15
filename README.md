@@ -35,7 +35,7 @@ The same box works in two quite different ways, and can switch between them when
 **As a picture frame at home.** The TV sits in a room, portrait or landscape, and shows your own photos and videos. Anyone at home can add pictures whenever they like, straight from their phone, with no app and no password:
 
 - scan the QR code in the corner of the TV, type a name, pick some photos or videos, and tap **Put them on the TV**: they start playing straight away, under that name;
-- or, on the advanced page, add them to **Uploads**, star the best ones into **Favorites**, or give them tags like `family` or `summer-2026`.
+- or, on the advanced page, add them under **Photos and videos**, star the best ones into **Favorites**, or give them tags like `family` or `summer-2026`.
 
 Then pick what the frame shows under **Play** (Favorites, one person's pictures, a tag, or several at once) and leave it **Until switched back**, so it stays on that until someone changes it. Or make your own filter to put a tag on a schedule, like the kids' pictures every morning. If you don't want the QR code on screen, switch it off under **TV**. Choosing **Black** under **Play**, or a time with nothing scheduled, keeps the TV fully dark, with no QR code.
 
@@ -160,7 +160,7 @@ Each box is a Raspberry Pi with an SD card made on your Mac. One run makes as ma
    cd ~/tvBox && node cards/make-cards.js
    ```
 
-   It asks once for your Wi‑Fi, a username and password for the boxes, and your time zone. Then, for each card:
+   It asks once for your Wi‑Fi (its name, password and country), a username and password for the boxes, and your time zone. If your Mac has an SSH key, it offers to let it log in to the boxes without a password: say yes, so the `ssh` commands below just work. It also asks which repo the boxes play from; the one it suggests is right. Then, for each card:
    - it asks the box's name (`tvbox`, then `tvbox2`, …);
    - it finds the SD card and asks you to type its name (like `disk4`) so nothing else gets erased;
    - it writes the card, which takes a few minutes. It asks for your Mac password to do this, and if macOS offers to initialise the card, choose **Ignore**.
@@ -275,16 +275,18 @@ A tilt switch on the back of the TV tells the box which way the TV faces, so you
 
 1. Wire one leg of the switch to **pin 11** (GPIO17) on the box's Raspberry Pi and the other leg to **pin 9** (ground). It doesn't matter which leg goes where. Pin 1 is at the end of the pin header furthest from the USB ports, on the inner row; the odd numbers run along that inner row, so pin 9 is the 5th pin and pin 11 the 6th.
 2. Fix the switch to the back of the TV so that its legs point well downward while the TV is portrait (the ball then rests on them, which closes the switch), and well upward once the TV is turned to landscape. Slanting it halfway between straight down and sideways, towards the side that goes up when you turn the TV, does both.
-3. In `scheduler/config.js`, change `tiltSwitch: null` to `tiltSwitch: { gpio: 17, closed: 'portrait' }`, then get the latest version on the box (see Everyday tasks). Or ask Claude to do it.
+3. On the advanced page, under **TV**, switch on **This TV has a tilt switch**. It's off until you do, so a box without one is never fooled by the empty pin.
 4. Turn the TV. About two seconds after it stops moving, the picture turns to match, and Recent activity on the page says `Screen: landscape (from the tilt switch).`
 
-If it always gets it the wrong way round, change `closed: 'portrait'` to `closed: 'landscape'`. The Portrait and Landscape buttons still work: what you tap stays until the TV is next turned.
+If it always gets it the wrong way round, switch on **The tilt switch gets it the wrong way round** just below. The Portrait and Landscape buttons still work: what you tap stays until the TV is next turned. To stop using the switch, switch **This TV has a tilt switch** off again.
 
 ### Everyday tasks
 
+The `ssh tvbox.local` commands below log in to the box. They work as written when the username you gave the cards is the same as your Mac's; otherwise put it in front, like `ssh pat@tvbox.local`.
+
 | To | Do this |
 |---|---|
-| See what's on screen | Open http://tvbox.local/ |
+| See what's on screen | Open http://tvbox.local/advanced |
 | Get new videos from the repo | Nothing: the box checks every hour. To get them now, press **Check for new videos now** on the page |
 | Get the latest version of the box's software | `ssh tvbox.local`, then `cd ~/tvBox && git pull && sudo bash scheduler/setup.sh` |
 | Show your own photos and videos | On the page: **Add photos or videos**, then pick **Uploads** and tap **Play** (see above) |
@@ -304,7 +306,7 @@ Before the box, a Mac ran the first tvBox. That version is kept at the git tag `
 
 ## If something's wrong
 
-Open http://tvbox.local/ first: it says what should be on screen and why.
+Open http://tvbox.local/advanced first: it says what should be on screen and why.
 
 | Problem | Try |
 |---|---|
@@ -320,7 +322,8 @@ Open http://tvbox.local/ first: it says what should be on screen and why.
 | The picture is upside down | On the advanced page, under **TV**, tap **Flip the picture** |
 | The picture is sideways | Under **TV** on the page, tap the way the TV faces now |
 | Recent activity says `Leaving out … it can't be measured` | That file is probably damaged: remove it and add it again, or tag it **portrait** or **landscape** to play it that way |
-| Recent activity says `Couldn't read the tilt switch` | Check its two wires (pins 11 and 9), then run setup again |
+| Recent activity says `Couldn't read the tilt switch` | Check its two wires (pins 11 and 9), then run setup again. No switch on this TV? Switch **This TV has a tilt switch** off under **TV** |
+| The TV keeps going to landscape by itself | **This TV has a tilt switch** is on under **TV** but there's no switch, or it's loose: switch it off, or check the switch |
 | The picture is upside down with the TV landscape | Tap **Flip the picture** while the TV is landscape |
 | The screen is black but the page says something is playing | Check the TV's input and brightness, and that the curtain isn't too thick |
 | The TV turns itself off in the evening | Turn off the TV's auto power-off |
