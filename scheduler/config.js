@@ -49,7 +49,7 @@ module.exports = {
     // the website are the only way. Once one is wired between GPIO17
     // (pin 11) and ground (pin 9): { gpio: 17, closed: 'portrait' }, where
     // `closed` is the way the TV faces while the switch is closed.
-    tiltSwitch: { gpio: 17, closed: 'landscape' },
+    tiltSwitch: { gpio: 17, closed: 'portrait' },
     // The website: http://<the box's name>.local/ (port 80 needs no number).
     webPort: 80,
     // systemd-timesyncd creates this once the clock is set from the network.
