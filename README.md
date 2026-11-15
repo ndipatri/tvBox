@@ -169,7 +169,7 @@ Each box is a Raspberry Pi with an SD card made on your Mac. One run makes as ma
 
 From then on, each box starts by itself whenever it's plugged in. The screen stays black for a moment after it starts, until the box has the right time from the internet.
 
-If the picture comes out upside down, change `rotate: 90` to `rotate: 270` in `scheduler/config.js`, then get the latest version on the box (see Everyday tasks).
+If the picture comes out upside down, open **http://tvbox.local/advanced** and, under **TV**, tap **Flip the picture**. It turns over within a second, and the box remembers it.
 
 ### Placing the TV in a window
 
@@ -267,7 +267,7 @@ The box plays only what fits the way the TV faces: out of whatever is playing (t
 
 Under **Photos and videos**, each thumbnail is marked with the shape the box measured (**portrait**, **landscape** or **square**), or **?** when it can't tell: a **?** doesn't play until it's tagged. To have something play the other way, give it the tag **portrait** or **landscape** under **Photos and videos** (then the mark is left off, since the tag decides). The box then treats it as that shape, whatever shape it really is: a landscape video tagged portrait plays while the TV is portrait, shown whole with black above and below. A photo tagged the other way is shown whole too, not cropped. Tags can be added only to your own photos and videos, not to the videos from the repo.
 
-If the picture is upside down while the TV is landscape, change `landscapeRotate: 0` to `landscapeRotate: 180` in `scheduler/config.js`, then get the latest version on the box (see Everyday tasks).
+If the picture is upside down while the TV is landscape, tap **Flip the picture** under **TV** while the TV is landscape. The box remembers it for each way the TV faces, so portrait and landscape are flipped separately.
 
 #### Let the box notice by itself: a tilt switch
 
@@ -317,11 +317,11 @@ Open http://tvbox.local/ first: it says what should be on screen and why.
 | It's not following the schedule | Someone changed it on the page: press **Back to schedule** |
 | A new video doesn't play | Press **Check for new videos now** on the page, and watch Recent activity for `Copied` |
 | The page says `The box has not started yet` | Unplug it and plug it back in. If that doesn't help, run setup again |
-| The picture is upside down | Switch `rotate` between 90 and 270 in `scheduler/config.js`, then run setup again |
+| The picture is upside down | On the advanced page, under **TV**, tap **Flip the picture** |
 | The picture is sideways | Under **TV** on the page, tap the way the TV faces now |
 | Recent activity says `Leaving out … it can't be measured` | That file is probably damaged: remove it and add it again, or tag it **portrait** or **landscape** to play it that way |
 | Recent activity says `Couldn't read the tilt switch` | Check its two wires (pins 11 and 9), then run setup again |
-| The picture is upside down with the TV landscape | Switch `landscapeRotate` between 0 and 180 in `scheduler/config.js`, then run setup again |
+| The picture is upside down with the TV landscape | Tap **Flip the picture** while the TV is landscape |
 | The screen is black but the page says something is playing | Check the TV's input and brightness, and that the curtain isn't too thick |
 | The TV turns itself off in the evening | Turn off the TV's auto power-off |
 | A photo is refused as not a JPEG or PNG | The phone sent it as HEIC. On an iPhone: Settings → Camera → Formats → Most Compatible, then add it again |

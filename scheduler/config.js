@@ -38,11 +38,12 @@ module.exports = {
     videoRoot: null,
     // How far mpv turns the picture for a TV standing on its side (portrait,
     // as chosen under TV on the website, and with nothing chosen): 90 or
-    // 270 (0 for a TV the normal way up). If it comes out upside down,
-    // switch between 90 and 270.
+    // 270 (0 for a TV the normal way up). If it comes out upside down, tap
+    // Flip the picture under TV on the website (saved on the box, in
+    // ~/video-scheduler/flip.json) rather than changing this.
     rotate: 270,
     // The same, for when the TV is turned to landscape on its mount (chosen
-    // under TV on the website): 0, or 180 if it comes out upside down.
+    // under TV on the website): 0. Upside down: Flip the picture, as above.
     landscapeRotate: 0,
     // A tilt switch on the back of the TV, so the box notices by itself when
     // the TV is turned (see the README). null: none, and the TV buttons on

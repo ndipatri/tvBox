@@ -301,6 +301,46 @@ test('the page offers Portrait and Landscape', async () => {
   assertScriptCompiles(page);
 });
 
+test('the website saves a flip for the way the TV faces', async () => {
+  const logs = [];
+  const s = site({}, { log: (m) => logs.push(m) });
+  assert.deepEqual((await s.call('GET', '/api/flip')).json, { portrait: false, landscape: false });
+  const r = await s.call('POST', '/api/flip', { orientation: 'portrait', flipped: true });
+  assert.equal(r.status, 200, r.body);
+  assert.equal(r.json.message, 'The picture is turned over for a portrait TV.');
+  assert.ok(logs.includes('Picture: turned over for a portrait TV (from the website).'), logs.join('\n'));
+  assert.deepEqual((await s.call('GET', '/api/flip')).json, { portrait: true, landscape: false });
+  await s.call('POST', '/api/flip', { orientation: 'landscape', flipped: true });
+  assert.deepEqual(JSON.parse(s.files[ROOT + '/flip.json']), { portrait: true, landscape: true }, 'portrait kept');
+  const back = await s.call('POST', '/api/flip', { orientation: 'portrait', flipped: false });
+  assert.equal(back.json.message, 'The picture is the usual way up for a portrait TV.');
+  assert.ok(logs.includes('Picture: the usual way up for a portrait TV (from the website).'), logs.join('\n'));
+  assert.deepEqual((await s.call('GET', '/api/flip')).json, { portrait: false, landscape: true });
+  assert.ok(!((ROOT + '/screen.json') in s.files), "which way the TV faces isn't touched");
+});
+
+test("the website refuses a flip it doesn't understand", async () => {
+  const s = site();
+  for (const body of [{ orientation: 'sideways', flipped: true }, { orientation: 'portrait', flipped: 'yes' }, {}]) {
+    const r = await s.call('POST', '/api/flip', body);
+    assert.equal(r.status, 400, JSON.stringify(body));
+  }
+  assert.ok(!((ROOT + '/flip.json') in s.files));
+});
+
+test('the page offers Flip the picture', async () => {
+  const page = (await site().call('GET', '/advanced')).body;
+  const body = page.slice(page.indexOf('<main>'));
+  const tv = body.indexOf('<h2>TV</h2>');
+  const section = body.slice(tv, body.indexOf('<h2>', tv + 1));
+  assert.ok(/<button id="flip"[^>]*>Flip the picture<\/button>/.test(section), section);
+  assert.ok(section.includes('upside down'), 'says what it is for');
+  const refresh = page.slice(page.indexOf('async function refresh()'), page.indexOf('let filterNames'));
+  assert.ok(refresh.includes("fetch('/api/flip')"), 'the saved flip is marked');
+  assert.ok(page.includes("post('/api/flip', { orientation: tvFacing, flipped })"), 'Flip saves it for the way the TV faces');
+  assertScriptCompiles(page);
+});
+
 // ---- The address code ----
 
 test('the address code is on until switched off', async () => {
