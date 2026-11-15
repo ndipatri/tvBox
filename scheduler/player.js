@@ -116,15 +116,26 @@ function createPlayer(options) {
 
   // Each tick: up whenever something plays and the switch is on, and left
   // up from item to item (not redrawn, so it never blinks); redrawn when an
-  // item starts with a new address. Down when switched off or when nothing
-  // is left to play (black). Taken down for a turn, it is back next tick.
-  // Between items (no current entry for a moment) it is left as it is.
+  // item starts with a new address. Also up while the screen is black only
+  // because nothing in what is playing is there or fits the TV, so a phone
+  // can still find the page and add something; redrawn there as soon as the
+  // address changes. Down when switched off, and on a black chosen on the
+  // website or by the schedule (no filter playing), so the TV is dark then.
+  // Taken down for a turn, it is back next tick. Between items (no current
+  // entry for a moment) it is left as it is.
   const CODE_RETRY_MS = 3000; // with no address or no code, try again this often
   async function followCode() {
-    const items = active ? logic.playlistItems(active).items : [];
-    if (!items.length || !logic.addressCodeOn()) {
+    if (!active || !logic.addressCodeOn()) {
       code.entry = null;
       return hideCode();
+    }
+    if (!logic.playlistItems(active).items.length) {
+      code.entry = null;
+      const url = addressUrl(options.readAddress(), options.config.box.webPort);
+      if (!url) return hideCode();
+      if (code.shownAt !== null && url === code.url) return;
+      if (code.shownAt !== null || code.lastShow === null || now().getTime() - code.lastShow >= CODE_RETRY_MS) await showCode();
+      return;
     }
     const entries = (await mpv.getProperty('playlist')) || [];
     const at = entries.findIndex((e) => e.current);

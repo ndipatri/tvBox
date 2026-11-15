@@ -37,7 +37,7 @@ The same box works in two quite different ways, and can switch between them when
 - scan the QR code in the corner of the TV, type a name, pick some photos or videos, and tap **Put them on the TV**: they start playing straight away, under that name;
 - or, on the advanced page, add them to **Uploads**, star the best ones into **Favorites**, or give them tags like `family` or `summer-2026`.
 
-Then pick what the frame shows under **Play** (Favorites, one person's pictures, a tag, or several at once) and leave it **Until switched back**, so it stays on that until someone changes it. Or make your own filter to put a tag on a schedule, like the kids' pictures every morning. If you don't want the QR code on screen, switch it off under **TV**.
+Then pick what the frame shows under **Play** (Favorites, one person's pictures, a tag, or several at once) and leave it **Until switched back**, so it stays on that until someone changes it. Or make your own filter to put a tag on a schedule, like the kids' pictures every morning. If you don't want the QR code on screen, switch it off under **TV**. Choosing **Black** under **Play**, or a time with nothing scheduled, keeps the TV fully dark, with no QR code.
 
 One thing to know when using it as a frame: the shared holiday schedule still applies in its season. Anything you choose **Until switched back** stays on regardless, but if you go **Back to schedule** in October, the Halloween videos take over. A box can happily be a picture frame most of the year and a window display for the holidays.
 
@@ -198,7 +198,7 @@ At the bottom, **Recent activity** shows the last things the box did: each video
 
 #### When tvbox.local doesn't open
 
-Some phones and computers (many Android phones among them) can't open names ending in `.local`. For those, the TV shows the box's number address as a small QR code in its bottom-right corner, the whole time something plays: point the phone's camera at it and tap the link. It opens the easy page (see "Let a visitor add their pictures" below), which links to the advanced one. The address is also written on the page under **TV**, next to **Show the box's address on the TV**, which turns the code off and on.
+Some phones and computers (many Android phones among them) can't open names ending in `.local`. For those, the TV shows the box's number address as a small QR code in its bottom-right corner, the whole time something plays, and also when the screen is black only because there's nothing to play yet (say every photo was removed, or none fit the way the TV faces), so someone can still scan it and add some: point the phone's camera at it and tap the link. It opens the easy page (see "Let a visitor add their pictures" below), which links to the advanced one. The address is also written on the page under **TV**, next to **Show the box's address on the TV**, which turns the code off and on.
 
 The router can give the box a new number now and then (the code always shows the current one). To keep it the same, so a bookmark keeps working, reserve the box's address in your router's settings (often called a DHCP reservation or reserved IP).
 
