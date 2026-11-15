@@ -366,6 +366,61 @@ test('a box started with the TV landscape turns the picture straight away', asyn
   assert.equal(b.mpv.entries[0].options, 'panscan=1.0,image-display-duration=inf', 'the wide photo fills a landscape TV');
 });
 
+test('the box turns the picture over when it is flipped on the website', async () => {
+  const b = box({ photos: ['00001-tall.jpg', '00002-tall.jpg'] });
+  b.files[ROOT + '/override.json'] = JSON.stringify({ tags: ['upload'], filters: [], setAt: +at(10, 20, 17), expires: null, untilCleared: true });
+  await b.tick();
+  const onScreen = b.mpv.playing();
+  const loads = () => b.mpv.commands.filter((c) => c[0] === 'loadfile').length;
+  const loaded = loads();
+  b.files[ROOT + '/flip.json'] = JSON.stringify({ portrait: true });
+  await b.tick();
+  assert.equal(b.mpv.props['video-rotate'], (config.box.rotate + 180) % 360);
+  assert.ok(b.logs.includes('Screen: portrait, turned over (the picture turned ' + (config.box.rotate + 180) % 360 + ' degrees).'), b.logs.join('\n'));
+  assert.equal(b.mpv.playing(), onScreen, 'the same item stays on screen');
+  assert.equal(loads(), loaded, 'nothing is queued again');
+  await b.tick();
+  assert.equal(b.mpv.commands.filter((c) => c[1] === 'video-rotate').length, 1, 'turned once');
+  b.files[ROOT + '/flip.json'] = JSON.stringify({ portrait: false });
+  await b.tick();
+  assert.equal(b.mpv.props['video-rotate'], config.box.rotate, 'back the usual way up');
+});
+
+test('a box started with the picture flipped turns it over straight away', async () => {
+  const b = box({ photos: ['00001-tall.jpg'] });
+  b.files[ROOT + '/flip.json'] = JSON.stringify({ portrait: true });
+  b.files[ROOT + '/override.json'] = JSON.stringify({ tags: ['upload'], filters: [], setAt: +at(10, 20, 17), expires: null, untilCleared: true });
+  await b.tick();
+  const degrees = (config.box.rotate + 180) % 360;
+  const rotated = b.mpv.commands.findIndex((c) => c[0] === 'set_property' && c[1] === 'video-rotate' && c[2] === degrees);
+  const loaded = b.mpv.commands.findIndex((c) => c[0] === 'loadfile');
+  assert.ok(rotated !== -1 && rotated < loaded, JSON.stringify(b.mpv.commands));
+});
+
+test('a flip for one way of the TV leaves the other alone', async () => {
+  const b = box({ photos: ['00001-wide.jpg'] });
+  b.files[ROOT + '/flip.json'] = JSON.stringify({ portrait: true });
+  b.files[ROOT + '/screen.json'] = JSON.stringify({ orientation: 'landscape' });
+  b.files[ROOT + '/override.json'] = JSON.stringify({ tags: ['upload'], filters: [], setAt: +at(10, 20, 17), expires: null, untilCleared: true });
+  await b.tick();
+  assert.equal(b.mpv.props['video-rotate'], config.box.landscapeRotate);
+  b.files[ROOT + '/flip.json'] = JSON.stringify({ portrait: true, landscape: true });
+  await b.tick();
+  assert.equal(b.mpv.props['video-rotate'], (config.box.landscapeRotate + 180) % 360);
+});
+
+test("the box ignores a flip setting it can't read", async () => {
+  const b = box({ photos: ['00001-tall.jpg'] });
+  b.files[ROOT + '/flip.json'] = 'not json';
+  b.files[ROOT + '/override.json'] = JSON.stringify({ tags: ['upload'], filters: [], setAt: +at(10, 20, 17), expires: null, untilCleared: true });
+  await b.tick();
+  await b.tick();
+  assert.equal(b.mpv.props['video-rotate'], undefined, 'left as mpv starts, by rotate');
+  const said = b.logs.filter((l) => l === "WARNING: Couldn't read " + ROOT + '/flip.json: not turning the picture over.');
+  assert.equal(said.length, 1, b.logs.join('\n'));
+  assert.equal(b.mpv.playing(), ROOT + '/photos/00001-tall.jpg');
+});
+
 test('a lone photo is held on screen, not reloaded', async () => {
   const b = box({ photos: ['00001-a.jpg'] });
   b.files[ROOT + '/override.json'] = JSON.stringify({ tags: ['upload'], filters: [], setAt: +at(10, 20, 17), expires: null, untilCleared: true });

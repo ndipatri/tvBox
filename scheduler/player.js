@@ -28,6 +28,7 @@ function createPlayer(options) {
   let status = null;
   let idle = false; // mpv stopped with nothing queued
   let facing; // which way the picture is turned for: undefined until the first tick
+  let turned = options.config.box.rotate; // how far mpv turns the picture: it starts at `rotate` (mpv.js)
 
   // The tilt switch, if the box has one: the way it says is saved once it
   // has held a new position for TILT_SETTLE_MS (a switch rattles while the
@@ -107,7 +108,7 @@ function createPlayer(options) {
     const width = (await mpv.getProperty('osd-width')) || PANEL.width;
     const height = (await mpv.getProperty('osd-height')) || PANEL.height;
     const { size, stride } = code.made;
-    const { x, y } = codeCorner(logic.rotationFor(facing), width, height, size, codeSettings.margin);
+    const { x, y } = codeCorner(turned, width, height, size, codeSettings.margin);
     await mpv.command('overlay-add', CODE_OVERLAY, x, y, CODE_FILE, 0, 'bgra', size, size, stride);
     code.shownAt = now().getTime();
     writeText(CODE_STATE, JSON.stringify({ showing: true, x, y, size, width, height, url }) + '\n');
@@ -154,16 +155,20 @@ function createPlayer(options) {
 
   // The TV was turned (saved on the website), or the box started with it
   // landscape: turn the picture, refit the item on screen for the new
-  // shape, and queue the rest again for it. mpv starts turned for portrait.
+  // shape, and queue the rest again for it. Turned over (or back) on the
+  // website, the TV facing the same way: only turn the picture.
   async function turnFor(orientation) {
     const starting = facing === undefined;
+    const turning = !starting && orientation !== facing;
     facing = orientation;
-    if (starting && orientation === 'portrait') return;
     const degrees = logic.rotationFor(orientation);
+    if (!turning && degrees === turned) return;
+    turned = degrees;
     await hideCode(); // its corner is somewhere else now
     await mpv.command('set_property', 'video-rotate', degrees);
-    log('Screen: ' + orientation + ' (the picture turned ' + degrees + ' degrees).');
-    if (starting) return;
+    const over = logic.readFlip()[orientation] ? ', turned over' : '';
+    log('Screen: ' + orientation + over + ' (the picture turned ' + degrees + ' degrees).');
+    if (!turning) return; // the same shape: nothing to refit
     const entries = (await mpv.getProperty('playlist')) || [];
     const onScreen = entries.find((e) => e.current);
     if (onScreen) {
@@ -176,7 +181,7 @@ function createPlayer(options) {
   async function tickNow() {
     if (tilt) await followTilt();
     const orientation = logic.readScreen();
-    if (orientation !== facing) await turnFor(orientation);
+    if (orientation !== facing || logic.rotationFor(orientation) !== turned) await turnFor(orientation);
 
     const choice = clockIsSet()
       ? logic.whatToShow(logic.readFilters(), now(), overrideState)

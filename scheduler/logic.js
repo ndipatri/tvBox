@@ -28,6 +28,9 @@ function createScheduler(io) {
   const ORIENTATIONS = ['portrait', 'landscape'];
   // Whether the TV shows the address code, set on the website: { "show": false }.
   const ADDRESS_CODE_PATH = videoRoot + '/address-code.json';
+  // Which ways the picture is turned over (180 degrees more), set on the
+  // website for a box whose picture comes out upside down: { "portrait": true }.
+  const FLIP_PATH = videoRoot + '/flip.json';
 
   // Videos queued ahead of time, so one follows the next without a gap.
   const QUEUE_AHEAD = 3;
@@ -644,9 +647,26 @@ function createScheduler(io) {
     }
   }
 
-  // How far mpv turns the picture for the way the TV faces.
+  // Which ways the picture is turned over: { portrait, landscape }, each
+  // true or false (neither when nothing is saved, or what is saved can't be read).
+  function readFlip() {
+    const none = { portrait: false, landscape: false };
+    const text = readText(FLIP_PATH);
+    if (text === null) return none;
+    try {
+      const saved = JSON.parse(text);
+      if (saved && typeof saved === 'object') return { portrait: saved.portrait === true, landscape: saved.landscape === true };
+    } catch (e) { /* below */ }
+    logOnce('flip', "WARNING: Couldn't read " + FLIP_PATH + ': not turning the picture over.');
+    return none;
+  }
+
+  // How far mpv turns the picture for the way the TV faces: `rotate` or
+  // `landscapeRotate` from the configuration, and 180 degrees more when the
+  // picture is turned over for that way.
   function rotationFor(orientation) {
-    return orientation === 'landscape' ? CONFIG.box.landscapeRotate : CONFIG.box.rotate;
+    const base = orientation === 'landscape' ? CONFIG.box.landscapeRotate : CONFIG.box.rotate;
+    return readFlip()[orientation] ? (base + 180) % 360 : base;
   }
 
   // Items' shapes as shown, measured once each: by path and size, since sync
@@ -901,8 +921,8 @@ function createScheduler(io) {
   }
 
   return {
-    CONFIG, videoRoot, OVERRIDE_PATH, STATUS_PATH, FILTERS_PATH, GITHUB_FILTERS_PATH, TAGS_PATH, SCREEN_PATH, ADDRESS_CODE_PATH, ORIENTATIONS, QUEUE_AHEAD, PHOTOS, UPLOAD_TAG,
-    readScreen, addressCodeOn, rotationFor, photoFills, suitsScreen, shapeOf, itemShape, isPhotoFile,
+    CONFIG, videoRoot, OVERRIDE_PATH, STATUS_PATH, FILTERS_PATH, GITHUB_FILTERS_PATH, TAGS_PATH, SCREEN_PATH, ADDRESS_CODE_PATH, FLIP_PATH, ORIENTATIONS, QUEUE_AHEAD, PHOTOS, UPLOAD_TAG,
+    readScreen, addressCodeOn, readFlip, rotationFor, photoFills, suitsScreen, shapeOf, itemShape, isPhotoFile,
     isTagName, tagFromFolder, readBoxTags, items, tagsInUse,
     isFilterName, checkFilters, readFilters, readRawFilters, findFilter, filterItems,
     scheduledFilter, nextScheduleChange, whatToShow, parseOverride, pickName, parseDay, parseWeekdays, formatTime,

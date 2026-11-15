@@ -560,6 +560,22 @@ function createWebsite(options) {
     return ok('The picture is turned for a ' + orientation + ' TV.');
   }
 
+  // POST /api/flip { orientation, flipped }: the picture comes out upside
+  // down for the way the TV faces (or is back the usual way). No PIN, like
+  // the TV buttons. Saved on the box, so it lasts through restarts and
+  // updates; the player turns the picture within a second.
+  function flipPicture(body) {
+    const orientation = body && body.orientation;
+    const flipped = body && body.flipped;
+    if (!logic.ORIENTATIONS.includes(orientation)) return fail('The TV is portrait or landscape.');
+    if (flipped !== true && flipped !== false) return fail('Say true or false.');
+    const saved = Object.assign(logic.readFlip(), { [orientation]: flipped });
+    writeText(logic.FLIP_PATH, JSON.stringify(saved) + '\n');
+    log('Picture: ' + (flipped ? 'turned over' : 'the usual way up') + ' for a ' + orientation + ' TV (from the website).');
+    return ok(flipped ? 'The picture is turned over for a ' + orientation + ' TV.'
+      : 'The picture is the usual way up for a ' + orientation + ' TV.');
+  }
+
   // GET /api/address-code: whether the TV shows the address code, and the
   // address. POST { show }: switches it, with no PIN, like the TV buttons.
   function addressCode() {
@@ -587,6 +603,7 @@ function createWebsite(options) {
     if (route === 'GET /api/items') return json(200, listItems());
     if (route === 'GET /api/filters') return json(200, logic.readRawFilters());
     if (route === 'GET /api/screen') return json(200, { orientation: logic.readScreen() });
+    if (route === 'GET /api/flip') return json(200, logic.readFlip());
     if (route === 'GET /api/address-code') return json(200, addressCode());
     if (route === 'POST /api/address-code') {
       let parsed;
@@ -597,6 +614,11 @@ function createWebsite(options) {
       let parsed;
       try { parsed = JSON.parse(body || '{}'); } catch (e) { return fail('Bad request.'); }
       return turnScreen(parsed);
+    }
+    if (route === 'POST /api/flip') {
+      let parsed;
+      try { parsed = JSON.parse(body || '{}'); } catch (e) { return fail('Bad request.'); }
+      return flipPicture(parsed);
     }
     if (route === 'POST /api/tags' || route === 'POST /api/filters') {
       let parsed;
@@ -846,6 +868,8 @@ const PAGE = `<!DOCTYPE html>
   <div class="card">
     <div class="hint">Turned the TV on its mount? Tap the way it faces now, and the picture turns to match.</div>
     <div class="grid"><button data-tv="portrait">Portrait</button><button data-tv="landscape">Landscape</button></div>
+    <div class="hint">Picture upside down? Tap Flip the picture, and it turns over. It's saved for the way the TV faces now, and stays after the box restarts.</div>
+    <button id="flip" aria-pressed="false">Flip the picture</button>
     <label class="switch"><input id="addresscode" type="checkbox"> Show the box's address on the TV</label>
     <div class="hint" id="address"></div>
   </div>
@@ -927,22 +951,41 @@ const PAGE = `<!DOCTYPE html>
     }
   }
 
-  // Outlines the way the box has the TV facing.
+  // The way the TV faces, and which ways the picture is turned over, as
+  // last read from the box: Flip turns it over (or back) for the way it faces.
+  let tvFacing = 'portrait';
+  let flips = { portrait: false, landscape: false };
+  function markFlip() {
+    $('flip').setAttribute('aria-pressed', flips[tvFacing] ? 'true' : 'false');
+    $('flip').classList.toggle('current', flips[tvFacing]);
+  }
+  // Outlines the way the box has the TV facing, and Flip when the picture
+  // is turned over for that way.
   function markScreen(orientation) {
+    tvFacing = orientation;
     for (const b of document.querySelectorAll('button[data-tv]')) {
       const yes = b.dataset.tv === orientation;
       b.classList.toggle('current', yes);
       b.setAttribute('aria-pressed', yes ? 'true' : 'false');
     }
+    markFlip();
   }
   for (const b of document.querySelectorAll('button[data-tv]')) {
     b.onclick = async () => { if ((await post('/api/screen', { orientation: b.dataset.tv })).ok) markScreen(b.dataset.tv); };
   }
+  $('flip').onclick = async () => {
+    const flipped = !flips[tvFacing];
+    if ((await post('/api/flip', { orientation: tvFacing, flipped })).ok) {
+      flips[tvFacing] = flipped;
+      markFlip();
+    }
+  };
 
   // The address code switch, and the address written beside it.
   $('addresscode').onchange = () => post('/api/address-code', { show: $('addresscode').checked });
   async function refresh() {
     try {
+      flips = await (await fetch('/api/flip')).json();
       markScreen((await (await fetch('/api/screen')).json()).orientation);
       const a = await (await fetch('/api/address-code')).json();
       $('addresscode').checked = a.show;
