@@ -742,23 +742,55 @@ test('no address code without an address or when switched off', async () => {
   assert.equal(c.logs.filter((l) => l === "WARNING: Couldn't make the address code: spawn qrencode ENOENT").length, 1, c.logs.join('\n'));
 });
 
-test('no address code on a black screen', async () => {
+test('no address code on a black screen chosen on the website or by the schedule', async () => {
   const b = await codeBox();
   await b.tick();
   assert.ok(b.overlay());
   b.files[ROOT + '/override.json'] = JSON.stringify({ tags: null, filters: [], setAt: +b.now, expires: null, untilCleared: true });
   await b.tick();
   assert.equal(b.mpv.playing(), null);
-  assert.equal(b.overlay(), null);
+  assert.equal(b.overlay(), null, 'black chosen under Play');
   assert.equal(b.state().showing, false);
-  // Turning the TV moves it: back in the new corner straight away.
+  for (let s = 0; s < 5; s++) { b.later(1); await b.tick(); assert.equal(b.overlay(), null, 'stays dark'); }
+  // Nothing scheduled: dark too.
   const c = await codeBox();
   await c.tick();
-  c.files[ROOT + '/screen.json'] = JSON.stringify({ orientation: 'landscape' });
-  c.files[ROOT + '/tags.json'] = JSON.stringify({ tags: { 'photos/00001-a.jpg': ['landscape'], 'photos/00002-b.jpg': ['landscape'] } });
+  assert.ok(c.overlay());
+  delete c.files[ROOT + '/override.json'];
+  c.files[ROOT + '/github-filters.json'] = JSON.stringify({ filters: [] });
   await c.tick();
-  if (!c.overlay()) { c.later(1); await c.tick(); }
-  assert.deepEqual(c.overlay().slice(0, 2), [1920 - 116 - 24, 1080 - 116 - 24], 'landscape (turned 0): the panel\'s bottom-right, straight away');
+  assert.equal(c.mpv.playing(), null);
+  assert.equal(c.overlay(), null, 'nothing scheduled');
+});
+
+test('the address code stays up on a black screen when nothing fits', async () => {
+  // Turning the TV with nothing its shape: black, and the code back in the new corner straight away.
+  const b = await codeBox();
+  await b.tick();
+  b.files[ROOT + '/screen.json'] = JSON.stringify({ orientation: 'landscape' });
+  await b.tick();
+  assert.equal(b.mpv.playing(), null, 'black: the uploads are portrait');
+  if (!b.overlay()) { b.later(1); await b.tick(); }
+  assert.deepEqual(b.overlay().slice(0, 2), [1920 - 116 - 24, 1080 - 116 - 24], 'landscape (turned 0): the panel\'s bottom-right');
+  const adds = b.adds;
+  for (let s = 0; s < 10; s++) { b.later(1); await b.tick(); assert.ok(b.overlay(), 'up at ' + s + ' s'); }
+  assert.equal(b.adds, adds, 'not drawn again while black');
+  // A new address while black: drawn again for it.
+  b.setAddress('10.0.0.31');
+  b.later(1);
+  await b.tick();
+  assert.equal(b.state().url, 'http://10.0.0.31/');
+  // No address: taken away.
+  b.setAddress(null);
+  b.later(1);
+  await b.tick();
+  assert.equal(b.overlay(), null);
+  // Every upload removed (nothing tagged): black, and the code up from the first tick.
+  const c = await codeBox({}, []);
+  await c.tick();
+  assert.equal(c.mpv.playing(), null);
+  assert.ok(c.overlay(), 'up with nothing to play');
+  assert.equal(c.state().url, 'http://10.0.0.25/');
 });
 
 (async () => {
