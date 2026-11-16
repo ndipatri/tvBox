@@ -31,6 +31,9 @@ function createScheduler(io) {
   // Which ways the picture is turned over (180 degrees more), set on the
   // website for a box whose picture comes out upside down: { "portrait": true }.
   const FLIP_PATH = videoRoot + '/flip.json';
+  // Whether the box follows a tilt switch on the TV, and the way the TV faces
+  // while it's closed, set on the website: { "on": true, "closed": "portrait" }.
+  const TILT_PATH = videoRoot + '/tilt.json';
 
   // Videos queued ahead of time, so one follows the next without a gap.
   const QUEUE_AHEAD = 3;
@@ -661,6 +664,23 @@ function createScheduler(io) {
     return none;
   }
 
+  // Whether the box follows a tilt switch, and the way the TV faces while it
+  // is closed: off, closed while portrait, when nothing is saved; off when
+  // what is saved can't be read.
+  function readTilt() {
+    const off = { on: false, closed: 'portrait' };
+    const text = readText(TILT_PATH);
+    if (text === null) return off;
+    try {
+      const saved = JSON.parse(text);
+      if (saved && typeof saved === 'object') {
+        return { on: saved.on === true, closed: saved.closed === 'landscape' ? 'landscape' : 'portrait' };
+      }
+    } catch (e) { /* below */ }
+    logOnce('tilt', "WARNING: Couldn't read " + TILT_PATH + ': not reading a tilt switch.');
+    return off;
+  }
+
   // How far mpv turns the picture for the way the TV faces: `rotate` or
   // `landscapeRotate` from the configuration, and 180 degrees more when the
   // picture is turned over for that way.
@@ -921,8 +941,8 @@ function createScheduler(io) {
   }
 
   return {
-    CONFIG, videoRoot, OVERRIDE_PATH, STATUS_PATH, FILTERS_PATH, GITHUB_FILTERS_PATH, TAGS_PATH, SCREEN_PATH, ADDRESS_CODE_PATH, FLIP_PATH, ORIENTATIONS, QUEUE_AHEAD, PHOTOS, UPLOAD_TAG,
-    readScreen, addressCodeOn, readFlip, rotationFor, photoFills, suitsScreen, shapeOf, itemShape, isPhotoFile,
+    CONFIG, videoRoot, OVERRIDE_PATH, STATUS_PATH, FILTERS_PATH, GITHUB_FILTERS_PATH, TAGS_PATH, SCREEN_PATH, ADDRESS_CODE_PATH, FLIP_PATH, TILT_PATH, ORIENTATIONS, QUEUE_AHEAD, PHOTOS, UPLOAD_TAG,
+    readScreen, addressCodeOn, readFlip, readTilt, rotationFor, photoFills, suitsScreen, shapeOf, itemShape, isPhotoFile,
     isTagName, tagFromFolder, readBoxTags, items, tagsInUse,
     isFilterName, checkFilters, readFilters, readRawFilters, findFilter, filterItems,
     scheduledFilter, nextScheduleChange, whatToShow, parseOverride, pickName, parseDay, parseWeekdays, formatTime,

@@ -13,7 +13,7 @@ const CLOCK_NOT_SET = 'black (waiting for the clock to be set)';
 // `options`: { config, videoRoot, mpv, now() -> Date, clockIsSet() -> bool,
 //              readText, writeText, removeFile, listFolder, log,
 //              mediaSize(path) -> { width, height } or null,
-//              readTilt(gpio) -> promise of 'closed' | 'open' (only with config.box.tiltSwitch),
+//              readTilt(gpio) -> promise of 'closed' | 'open' (only while the tilt switch is on),
 //              readAddress() -> the box's IPv4 address or null, and
 //              makeAddressCode(url, maxSize) -> promise of { size, stride, pixels }
 //              (both for the address code; without them it isn't shown) }
@@ -30,18 +30,25 @@ function createPlayer(options) {
   let facing; // which way the picture is turned for: undefined until the first tick
   let turned = options.config.box.rotate; // how far mpv turns the picture: it starts at `rotate` (mpv.js)
 
-  // The tilt switch, if the box has one: the way it says is saved once it
-  // has held a new position for TILT_SETTLE_MS (a switch rattles while the
-  // TV turns). A way chosen on the website stays until the switch moves.
-  const tilt = options.config.box.tiltSwitch || null;
+  // The tilt switch, while it is switched on for this box on the website:
+  // the way it says is saved once it has held a new position for
+  // TILT_SETTLE_MS (a switch rattles while the TV turns). A way chosen on the
+  // website stays until the switch moves. Switched on, or told it's the
+  // other way round, it is followed afresh: what it reads then is saved once
+  // it settles. Switched off, the pin isn't read.
+  const gpio = options.config.box.tiltGpio;
   const TILT_SETTLE_MS = 2000;
-  const switchState = { seen: null, since: 0, acted: null, warned: false };
-  async function followTilt() {
+  const switchState = { seen: null, since: 0, acted: null, warned: false, closed: null };
+  async function followTilt(tilt) {
+    if (tilt.closed !== switchState.closed) {
+      switchState.closed = tilt.closed;
+      switchState.acted = null;
+    }
     let reading;
     try {
-      reading = await options.readTilt(tilt.gpio);
+      reading = await options.readTilt(gpio);
     } catch (e) {
-      if (!switchState.warned) log("WARNING: Couldn't read the tilt switch on GPIO" + tilt.gpio + ': ' + e.message);
+      if (!switchState.warned) log("WARNING: Couldn't read the tilt switch on GPIO" + gpio + ': ' + e.message);
       switchState.warned = true;
       return;
     }
@@ -190,7 +197,9 @@ function createPlayer(options) {
   }
 
   async function tickNow() {
-    if (tilt) await followTilt();
+    const tilt = logic.readTilt();
+    if (tilt.on) await followTilt(tilt);
+    else Object.assign(switchState, { seen: null, since: 0, acted: null, warned: false, closed: null });
     const orientation = logic.readScreen();
     if (orientation !== facing || logic.rotationFor(orientation) !== turned) await turnFor(orientation);
 
