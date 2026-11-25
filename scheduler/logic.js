@@ -8,6 +8,19 @@
 //          listFolder(path) -> [names] or null, log(message),
 //          mediaSize(path) -> { width, height } or null (only to play),
 //          fileSize(path) -> bytes or null (optional) }
+// The Pi's graphics can't hold a picture more than 4096 pixels across or
+// high (mpv shows a blank blue screen and logs "texture could not be
+// created"), and phones take photos up to 8064 wide. So a photo bigger than
+// that is shrunk by mpv as it loads, to fit 4096 square (its shape and its
+// EXIF turn are kept); the TV is far smaller anyway. Returns the extra mpv
+// options for a photo of `size` ({ width, height } as shown, or null): ''
+// when it fits. scheduler/tests/onbox/big_photo.sh checks this on a real Pi.
+const MAX_PHOTO_SIDE = 4096;
+function photoShrink(size) {
+  if (!size || Math.max(size.width, size.height) <= MAX_PHOTO_SIDE) return '';
+  return ',vf=lavfi=[scale=' + MAX_PHOTO_SIDE + ':' + MAX_PHOTO_SIDE + ':force_original_aspect_ratio=decrease]';
+}
+
 function createScheduler(io) {
   const CONFIG = io.config;
   const { readText, removeFile, listFolder, log } = io;
@@ -704,16 +717,9 @@ function createScheduler(io) {
     return !size ? null : size.width === size.height ? 'square' : size.width > size.height ? 'landscape' : 'portrait';
   }
 
-  // The Pi's graphics can't hold a picture more than 4096 pixels across or
-  // high (mpv shows nothing but a blank, blue-ish screen and logs "texture
-  // could not be created"), and phones take photos up to 8064 wide. So a
-  // photo bigger than that is shrunk by mpv as it loads, to fit 4096 square
-  // (its shape and its EXIF turn are kept); the TV is far smaller anyway.
-  const MAX_PHOTO_SIDE = 4096;
+  // mpv's options for a photo, to shrink it if it's too big (see photoShrink).
   function photoOptions(path) {
-    const size = sizeOf(path);
-    if (!size || Math.max(size.width, size.height) <= MAX_PHOTO_SIDE) return '';
-    return ',vf=lavfi=[scale=' + MAX_PHOTO_SIDE + ':' + MAX_PHOTO_SIDE + ':force_original_aspect_ratio=decrease]';
+    return photoShrink(sizeOf(path));
   }
 
   // An item's shape for choosing what plays: the tag `portrait` or
@@ -964,4 +970,4 @@ function createScheduler(io) {
   };
 }
 
-module.exports = { createScheduler };
+module.exports = { createScheduler, photoShrink, MAX_PHOTO_SIDE };
