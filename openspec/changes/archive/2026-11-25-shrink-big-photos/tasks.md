@@ -6,3 +6,4 @@
 ## 2. On the box
 
 - [x] 2.1 Tried by hand over mpv's socket: a 5712 × 4284 photo loaded this way showed at 4096 × 3072 with no texture error, and an upright one kept its EXIF turn
+- [x] 2.2 `scheduler/tests/onbox/big_photo.sh`: on the box, a 5712 × 4284 photo fails unshrunk (texture error) and is drawn at 4096 × 3072 with `photoShrink`'s options; with the shrink taken out, it fails

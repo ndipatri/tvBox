@@ -173,6 +173,10 @@ Add a check to `inside.sh` for any new box behaviour it can reach: a website act
 
 The box's software today: Raspberry Pi OS Lite (64-bit), Debian 13 (trixie), Node.js 20.19, mpv 0.40, and ffmpeg 7.1 from the Raspberry Pi archive. When Raspberry Pi OS moves to a new Debian release, update the Dockerfile's `FROM` and the keyring package, and rerun the rehearsal.
 
+## Checking on a real box (the Pi's graphics)
+
+Some things only the Pi itself can show; the rehearsal and the emulator draw with software, not the Pi's graphics. `ssh tvbox.local bash ~/tvBox/scheduler/tests/onbox/big_photo.sh` checks that a photo too big for the Pi's graphics (5712 × 4284, a 24 MP iPhone photo) is drawn rather than leaving the TV blank blue: it first loads it unshrunk and expects mpv's `texture could not be created` (so the check can see a blue screen), then with `photoShrink`'s options from the installed `/opt/tvbox/logic.js` and expects it drawn within 4096 × 4096 with no error. The TV shows a test pattern for about 15 seconds, then goes back to what was playing. Run it after setup; `TVBOX_CODE=~/tvBox/scheduler` tries the checked-out code before setup.
+
 ## Trying it without the box (the emulator)
 
 `bash scheduler/tests/e2e/emulate.sh` runs a box on the Mac, in the rehearsal's Docker image, until Ctrl-C. Use it when the person is away from the real box, or to try a website or player change by hand before shipping. **For starting, restarting and testing with it, use the tvbox-emulator skill.**
