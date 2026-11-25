@@ -1551,7 +1551,8 @@ const EASY_PAGE = `<!DOCTYPE html>
   <p class="lead">Add your photos or videos and they'll play on the TV.</p>
   <div class="card">
     <label for="name">Your name</label>
-    <input id="name" type="text" autocomplete="name" maxlength="60" placeholder="Aunt Sue">
+    <input id="name" type="text" autocomplete="given-name" maxlength="60" placeholder="First name">
+    <div class="hint">Your pictures are kept together under your name. Next time, use the same name and your new pictures replace these.</div>
     <label>Photos and videos</label>
     <label class="pick">Choose photos or videos<input id="files" type="file" accept="image/*,video/*" multiple></label>
     <div id="chosen"></div>
