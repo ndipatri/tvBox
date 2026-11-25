@@ -175,7 +175,7 @@ The box's software today: Raspberry Pi OS Lite (64-bit), Debian 13 (trixie), Nod
 
 ## Checking on a real box (the Pi's graphics)
 
-Some things only the Pi itself can show; the rehearsal and the emulator draw with software, not the Pi's graphics. `ssh tvbox.local bash ~/tvBox/scheduler/tests/onbox/big_photo.sh` checks that a photo too big for the Pi's graphics (5712 × 4284, a 24 MP iPhone photo) is drawn rather than leaving the TV blank blue: it first loads it unshrunk and expects mpv's `texture could not be created` (so the check can see a blue screen), then with `photoShrink`'s options from the installed `/opt/tvbox/logic.js` and expects it drawn within 4096 × 4096 with no error. The TV shows a test pattern for about 15 seconds, then goes back to what was playing. Run it after setup; `TVBOX_CODE=~/tvBox/scheduler` tries the checked-out code before setup.
+Some things only the Pi itself can show; the rehearsal and the emulator draw with software, not the Pi's graphics. `ssh tvbox.local bash ~/tvBox/scheduler/tests/onbox/big_photo.sh` checks that a photo too big for the Pi's graphics (5712 × 4284, a 24 MP iPhone photo) is drawn rather than leaving the TV blank blue: it first loads it unshrunk and expects mpv's `texture could not be created` (so the check can see a blue screen), then with `photoFilters`'s options from the installed `/opt/tvbox/logic.js` and expects it drawn within 4096 × 4096 with no error. The TV shows a test pattern for about 15 seconds, then goes back to what was playing. Run it after setup; `TVBOX_CODE=~/tvBox/scheduler` tries the checked-out code before setup.
 
 ## Trying it without the box (the emulator)
 

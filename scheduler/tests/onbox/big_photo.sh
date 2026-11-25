@@ -82,7 +82,7 @@ echo "   drawn at: $size, texture errors: $errors"
 check "the Pi's graphics can't draw it as it is (so this test can see a blue screen)" $([ "$errors" -gt 0 ]; echo $?)
 
 echo "== The same photo, with the options the installed logic.js gives it"
-options=$(node -e 'console.log(require(process.argv[1]).photoShrink({ width: 5712, height: 4284 }))' "$CODE/logic.js")
+options=$(node -e 'console.log(require(process.argv[1]).photoFilters({ width: 5712, height: 4284 }))' "$CODE/logic.js")
 echo "   options: ${options:-none}"
 read -r size errors < <(show "$options")
 echo "   drawn at: $size, texture errors: $errors"

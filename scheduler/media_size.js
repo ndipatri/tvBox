@@ -33,7 +33,13 @@ function photoSize(buf) {
       const width = buf.readUInt16BE(start + 3);
       if (!width || !height) return null;
       // 5 to 8: stored turned a quarter, so shown with width and height swapped.
-      return orientation >= 5 && orientation <= 8 ? { width: height, height: width } : { width, height };
+      const size = orientation >= 5 && orientation <= 8 ? { width: height, height: width } : { width, height };
+      // 2 and 4: stored mirrored, left to right or top to bottom (an iPhone
+      // photo turned and flipped in Photos can be 4). mpv shows these as
+      // stored, so the player flips them back (see logic.js, photoFilters).
+      if (orientation === 2) size.flip = 'horizontal';
+      if (orientation === 4) size.flip = 'vertical';
+      return size;
     }
     if (marker === 0xda || marker === 0xd9) return null; // the picture itself, with no frame header before it
     at = start + length - 2;

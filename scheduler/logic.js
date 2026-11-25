@@ -8,17 +8,30 @@
 //          listFolder(path) -> [names] or null, log(message),
 //          mediaSize(path) -> { width, height } or null (only to play),
 //          fileSize(path) -> bytes or null (optional) }
-// The Pi's graphics can't hold a picture more than 4096 pixels across or
-// high (mpv shows a blank blue screen and logs "texture could not be
-// created"), and phones take photos up to 8064 wide. So a photo bigger than
-// that is shrunk by mpv as it loads, to fit 4096 square (its shape and its
-// EXIF turn are kept); the TV is far smaller anyway. Returns the extra mpv
-// options for a photo of `size` ({ width, height } as shown, or null): ''
-// when it fits. scheduler/tests/onbox/big_photo.sh checks this on a real Pi.
+// mpv's extra options for a photo of `size` ({ width, height } as shown,
+// with `flip` when the photo is stored mirrored; or null): '' when it needs
+// none. Two things mpv doesn't do by itself:
+// - Flip back a photo stored mirrored (EXIF orientation 2 or 4): mpv applies
+//   EXIF turns but not flips, so it would show it mirrored, or upside down.
+// - Shrink a photo more than 4096 pixels on a side: the Pi's graphics can't
+//   hold a bigger picture (mpv shows a blank blue screen and logs "texture
+//   could not be created"), and phones take photos up to 8064 wide. It is
+//   shrunk to fit 4096 square, its shape and EXIF turn kept; the TV is far
+//   smaller anyway. scheduler/tests/onbox/big_photo.sh checks this on a Pi.
+// Both go in one ffmpeg filter graph, length-quoted (%N%) so its comma isn't
+// taken as the end of the option.
 const MAX_PHOTO_SIDE = 4096;
-function photoShrink(size) {
-  if (!size || Math.max(size.width, size.height) <= MAX_PHOTO_SIDE) return '';
-  return ',vf=lavfi=[scale=' + MAX_PHOTO_SIDE + ':' + MAX_PHOTO_SIDE + ':force_original_aspect_ratio=decrease]';
+function photoFilters(size) {
+  if (!size) return '';
+  const steps = [];
+  if (size.flip === 'horizontal') steps.push('hflip');
+  if (size.flip === 'vertical') steps.push('vflip');
+  if (Math.max(size.width, size.height) > MAX_PHOTO_SIDE) {
+    steps.push('scale=' + MAX_PHOTO_SIDE + ':' + MAX_PHOTO_SIDE + ':force_original_aspect_ratio=decrease');
+  }
+  if (!steps.length) return '';
+  const graph = 'lavfi=[' + steps.join(',') + ']';
+  return ',vf=%' + Buffer.byteLength(graph) + '%' + graph;
 }
 
 function createScheduler(io) {
@@ -717,9 +730,9 @@ function createScheduler(io) {
     return !size ? null : size.width === size.height ? 'square' : size.width > size.height ? 'landscape' : 'portrait';
   }
 
-  // mpv's options for a photo, to shrink it if it's too big (see photoShrink).
+  // mpv's options for a photo, to flip or shrink it if needed (see photoFilters).
   function photoOptions(path) {
-    return photoShrink(sizeOf(path));
+    return photoFilters(sizeOf(path));
   }
 
   // An item's shape for choosing what plays: the tag `portrait` or
@@ -970,4 +983,4 @@ function createScheduler(io) {
   };
 }
 
-module.exports = { createScheduler, photoShrink, MAX_PHOTO_SIDE };
+module.exports = { createScheduler, photoFilters, MAX_PHOTO_SIDE };

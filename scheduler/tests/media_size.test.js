@@ -53,6 +53,12 @@ test('a photo stored on its side is measured the way it is shown', () => {
   assert.equal(photoSize(Buffer.alloc(0)), null);
 });
 
+test('a photo stored mirrored is marked to be flipped back', () => {
+  assert.deepEqual(photoSize(jpeg(160, 96, 4, false)), { width: 160, height: 96, flip: 'vertical' });
+  assert.deepEqual(photoSize(jpeg(160, 96, 2, true)), { width: 160, height: 96, flip: 'horizontal' });
+  assert.deepEqual(photoSize(jpeg(160, 96, 3, false)), { width: 160, height: 96 }, 'turned upside down: mpv turns it itself');
+});
+
 // An MP4: boxes as [type, payload]; a box's payload may be a list of boxes.
 function box(type, payload) {
   const body = Array.isArray(payload) ? Buffer.concat(payload) : payload;
