@@ -8,6 +8,19 @@
 //          listFolder(path) -> [names] or null, log(message),
 //          mediaSize(path) -> { width, height } or null (only to play),
 //          fileSize(path) -> bytes or null (optional) }
+// The Pi's graphics can't hold a picture more than 4096 pixels across or
+// high (mpv shows a blank blue screen and logs "texture could not be
+// created"), and phones take photos up to 8064 wide. So a photo bigger than
+// that is shrunk by mpv as it loads, to fit 4096 square (its shape and its
+// EXIF turn are kept); the TV is far smaller anyway. Returns the extra mpv
+// options for a photo of `size` ({ width, height } as shown, or null): ''
+// when it fits. scheduler/tests/onbox/big_photo.sh checks this on a real Pi.
+const MAX_PHOTO_SIDE = 4096;
+function photoShrink(size) {
+  if (!size || Math.max(size.width, size.height) <= MAX_PHOTO_SIDE) return '';
+  return ',vf=lavfi=[scale=' + MAX_PHOTO_SIDE + ':' + MAX_PHOTO_SIDE + ':force_original_aspect_ratio=decrease]';
+}
+
 function createScheduler(io) {
   const CONFIG = io.config;
   const { readText, removeFile, listFolder, log } = io;
@@ -689,17 +702,24 @@ function createScheduler(io) {
     return readFlip()[orientation] ? (base + 180) % 360 : base;
   }
 
-  // Items' shapes as shown, measured once each: by path and size, since sync
-  // can replace a video under the same name.
-  const shapes = new Map();
+  // Items' sizes as shown, measured once each: by path and file size, since
+  // sync can replace a video under the same name.
+  const sizes = new Map();
+  // { width, height } as shown, or null for an item that can't be measured.
+  function sizeOf(path) {
+    const key = path + ':' + (io.fileSize ? io.fileSize(path) : '');
+    if (!sizes.has(key)) sizes.set(key, io.mediaSize ? io.mediaSize(path) : null);
+    return sizes.get(key);
+  }
   // 'portrait', 'landscape', 'square', or null for an item that can't be measured.
   function shapeOf(path) {
-    const key = path + ':' + (io.fileSize ? io.fileSize(path) : '');
-    if (!shapes.has(key)) {
-      const size = io.mediaSize ? io.mediaSize(path) : null;
-      shapes.set(key, !size ? null : size.width === size.height ? 'square' : size.width > size.height ? 'landscape' : 'portrait');
-    }
-    return shapes.get(key);
+    const size = sizeOf(path);
+    return !size ? null : size.width === size.height ? 'square' : size.width > size.height ? 'landscape' : 'portrait';
+  }
+
+  // mpv's options for a photo, to shrink it if it's too big (see photoShrink).
+  function photoOptions(path) {
+    return photoShrink(sizeOf(path));
   }
 
   // An item's shape for choosing what plays: the tag `portrait` or
@@ -869,7 +889,7 @@ function createScheduler(io) {
       // photo, and every video, is fitted whole, with black around it. Each
       // item says which for itself (see mpv.js for why).
       const fill = isPhotoFile(video.path) && photoFills(video.path, orientation);
-      const panscan = fill ? 'panscan=1.0' : 'panscan=0';
+      const panscan = (fill ? 'panscan=1.0' : 'panscan=0') + (isPhotoFile(video.path) ? photoOptions(video.path) : '');
       if (videos.length === 1 && isPhotoFile(video.path)) {
         // The only thing to play is one photo: queue it once and hold it on
         // screen, instead of reloading it every few seconds (which flashes
@@ -950,4 +970,4 @@ function createScheduler(io) {
   };
 }
 
-module.exports = { createScheduler };
+module.exports = { createScheduler, photoShrink, MAX_PHOTO_SIDE };
