@@ -6,4 +6,4 @@
 ## 2. On the box
 
 - [x] 2.1 By hand: `vf=%N%lavfi=[vflip,scale=…]` is accepted by mpv 0.40 (unquoted, the comma breaks it: "Terminating ']' missing for 'vf'")
-- [ ] 2.2 The `bisbee` photos `00081-img_3240.jpeg` and `00084-img_2269.jpeg` play upright after setup; `big_photo.sh` still passes
+- [x] 2.2 After setup, with the TV landscape, the `bisbee` photos `00081-img_3240.jpeg` and `00084-img_2269.jpeg` play upright (checked on the TV); `big_photo.sh` passed with this code
