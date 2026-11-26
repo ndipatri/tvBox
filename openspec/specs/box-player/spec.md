@@ -346,11 +346,26 @@ The box SHALL turn the picture 180 degrees more than `rotate` (portrait) or `lan
 - **THEN** the picture stays turned by `rotate`, and `WARNING: Couldn't read <videoRoot>/flip.json: not turning the picture over.` is logged once
 
 ### Requirement: Shrinks photos too big for the box's graphics
-The box SHALL have mpv shrink a photo more than 4096 pixels wide or high (as measured, after its EXIF orientation) as it loads, to fit within 4096 × 4096 with its shape and orientation kept, since the Pi's graphics can't show a bigger picture. Photos up to 4096 on both sides, and videos, SHALL be loaded without this.
+The box SHALL have mpv shrink a photo more than 4096 pixels wide or high (as measured, after its EXIF orientation) as it loads, to fit within 4096 × 4096 with its shape and orientation kept, since the Pi's graphics can't show a bigger picture. Photos up to 4096 on both sides, and videos, SHALL be loaded without this. The shrink and any flip SHALL go to mpv as one filter graph, length-quoted (`vf=%N%lavfi=[…]`) so its commas are kept.
 
 #### Scenario: a photo too big for the box's graphics is shrunk as it loads
 - **GIVEN** the TV portrait and the uploads `00001-huge.jpg` (4284 × 5712), `00002-a.jpg` (a small portrait photo) and `00003-b.mp4`
 - **WHEN** the box plays the tag `upload`
-- **THEN** mpv is given the huge photo with `vf=lavfi=[scale=4096:4096:force_original_aspect_ratio=decrease]` after its `panscan`
+- **THEN** mpv is given the huge photo with `vf=%60%lavfi=[scale=4096:4096:force_original_aspect_ratio=decrease]` after its `panscan`
 - **AND** the small photo and the video without it
+
+### Requirement: Flips back photos stored mirrored
+The box SHALL show a JPEG stored mirrored (EXIF orientation 2, 4, 5 or 7) the way its orientation says, as the phone shows it. Since mpv takes only the turn from such a photo and drops the mirror, the box SHALL have mpv flip it top to bottom as it loads, before mpv's own turn. Photos with any other orientation SHALL be loaded without a flip.
+
+#### Scenario: a photo stored mirrored is marked to be corrected
+- **GIVEN** JPEG headers 160 × 96 with each EXIF orientation 1 to 8
+- **WHEN** the box measures them
+- **THEN** 2, 4, 5 and 7 are marked mirrored, and 1, 3, 6 and 8 are not
+- **AND** 5 to 8 measure 96 × 160, the rest 160 × 96
+
+#### Scenario: a photo stored mirrored is corrected as it loads
+- **GIVEN** the TV portrait and the uploads `00001-mirrored.jpg` (portrait, stored mirrored) and `00002-a.jpg` (portrait)
+- **WHEN** the box plays the tag `upload`
+- **THEN** mpv is given the mirrored photo with `vf=%13%lavfi=[vflip]` after its `panscan`
+- **AND** the other photo without it
 
