@@ -53,7 +53,7 @@ function box(dirs = {}, extra = {}) {
       const n = p.split('/').pop();
       if (n.includes('broken')) return null;
       if (n.includes('huge')) return { width: 4284, height: 5712 }; // a 24 MP phone photo
-      if (n.includes('mirrored')) return { width: 96, height: 160, flip: 'vertical' };
+      if (n.includes('mirrored')) return { width: 96, height: 160, mirrored: true };
       if (n.includes('wide')) return { width: 160, height: 96 };
       if (n.includes('square')) return { width: 100, height: 100 };
       return { width: 96, height: 160 };
@@ -242,7 +242,7 @@ test('each photo fills the screen and each video is fitted whole', async () => {
   assert.deepEqual(queued, [['00001-a.jpg', 'panscan=1.0'], ['00002-b.mp4', 'panscan=0'], ['00003-c.png', 'panscan=1.0']]);
 });
 
-test('a photo stored mirrored is flipped back as it loads', async () => {
+test('a photo stored mirrored is corrected as it loads', async () => {
   const b = box({ photos: ['00001-mirrored.jpg', '00002-a.jpg'] });
   b.files[ROOT + '/override.json'] = JSON.stringify({ tags: ['upload'], filters: [], setAt: +at(10, 20, 17), expires: null, untilCleared: true });
   await b.tick();

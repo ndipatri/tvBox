@@ -9,23 +9,26 @@
 //          mediaSize(path) -> { width, height } or null (only to play),
 //          fileSize(path) -> bytes or null (optional) }
 // mpv's extra options for a photo of `size` ({ width, height } as shown,
-// with `flip` when the photo is stored mirrored; or null): '' when it needs
-// none. Two things mpv doesn't do by itself:
-// - Flip back a photo stored mirrored (EXIF orientation 2 or 4): mpv applies
-//   EXIF turns but not flips, so it would show it mirrored, or upside down.
-// - Shrink a photo more than 4096 pixels on a side: the Pi's graphics can't
-//   hold a bigger picture (mpv shows a blank blue screen and logs "texture
-//   could not be created"), and phones take photos up to 8064 wide. It is
-//   shrunk to fit 4096 square, its shape and EXIF turn kept; the TV is far
-//   smaller anyway. scheduler/tests/onbox/big_photo.sh checks this on a Pi.
+// with `mirrored` when the photo is stored mirrored; or null): '' when it
+// needs none. Two things mpv doesn't get right by itself:
+// - A photo stored mirrored (EXIF orientation 2, 4, 5 or 7): mpv takes only
+//   the turn from it and drops the mirror, so such a photo comes out
+//   mirrored or upside down. Measured on the box (mpv 0.40, ffmpeg 7.1),
+//   for all four, flipping it top to bottom first and then letting mpv turn
+//   it gives exactly the picture the EXIF orientation means.
+//   scheduler/tests/onbox/photo_orientations.sh checks all 8 orientations.
+// - A photo more than 4096 pixels on a side: the Pi's graphics can't hold a
+//   bigger picture (mpv shows a blank blue screen and logs "texture could
+//   not be created"), and phones take photos up to 8064 wide. It is shrunk
+//   to fit 4096 square, its shape and turn kept; the TV is far smaller
+//   anyway. scheduler/tests/onbox/big_photo.sh checks this on a Pi.
 // Both go in one ffmpeg filter graph, length-quoted (%N%) so its comma isn't
 // taken as the end of the option.
 const MAX_PHOTO_SIDE = 4096;
 function photoFilters(size) {
   if (!size) return '';
   const steps = [];
-  if (size.flip === 'horizontal') steps.push('hflip');
-  if (size.flip === 'vertical') steps.push('vflip');
+  if (size.mirrored) steps.push('vflip');
   if (Math.max(size.width, size.height) > MAX_PHOTO_SIDE) {
     steps.push('scale=' + MAX_PHOTO_SIDE + ':' + MAX_PHOTO_SIDE + ':force_original_aspect_ratio=decrease');
   }
