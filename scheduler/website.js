@@ -868,7 +868,7 @@ const PAGE = `<!DOCTYPE html>
   <h2>Play</h2>
   <div class="card">
     <div class="now" role="status">Now: <span id="status">Checking…</span></div>
-    <div class="hint">Pick one or more, then tap Play.</div>
+    <div class="hint">What's playing starts out picked. Tap to pick or unpick, then tap Play.</div>
     <div class="group" id="taglabel">Tags</div>
     <div class="grid picks" id="tagpicks"></div>
     <div class="group">Filters</div>
@@ -1031,7 +1031,9 @@ const PAGE = `<!DOCTYPE html>
       const r = await (await fetch('/api/status')).json();
       setText($('status'), r.status || 'The box has not started yet.');
       // playingChoices is in the second script block, loaded by the time this runs (after an await).
-      outline(playingChoices(r.status, filterNames));
+      const playing = playingChoices(r.status, filterNames);
+      outline(playing);
+      pickPlaying(playing);
     } catch (e) { setText($('status'), "Couldn't reach the box."); outline([]); }
     try {
       const l = await (await fetch('/api/log')).json();
@@ -1041,10 +1043,30 @@ const PAGE = `<!DOCTYPE html>
 
   let filterNames = []; // the box's filters, for outlining the playing ones
   const picked = new Set(); // what is selected under Play: '#tag' or a filter's name
+  let touched = false; // someone has picked or unpicked since the picks last followed the box
+
+  // Marks each Play button picked or not, and turns Play off while nothing is picked.
+  function showPicks() {
+    for (const b of document.querySelectorAll('.picks button')) {
+      b.classList.toggle('picked', picked.has(b.dataset.choice));
+      b.setAttribute('aria-pressed', String(picked.has(b.dataset.choice)));
+    }
+    $('play-picked').disabled = !picked.size;
+  }
+
+  // Until someone taps a choice, the picks are what is playing, so tapping a
+  // playing tag or filter unpicks it (and Play then plays the rest).
+  function pickPlaying(playing) {
+    if (touched) return;
+    picked.clear();
+    for (const x of startingPicks(playing)) picked.add(x);
+    showPicks();
+  }
 
   // A button that selects or unselects the choice without showing anything.
   function pickButton(text, choice) {
     const b = button(text, () => {
+      touched = true;
       if (picked.has(choice)) picked.delete(choice); else picked.add(choice);
       b.classList.toggle('picked', picked.has(choice));
       b.setAttribute('aria-pressed', String(picked.has(choice)));
@@ -1078,9 +1100,7 @@ const PAGE = `<!DOCTYPE html>
     const filters = choice.filter((x) => !x.startsWith('#'));
     const r = await post('/api/show', { tags, filters, until: $('until').value });
     if (r.ok) {
-      picked.clear();
-      for (const b of document.querySelectorAll('.picks button')) { b.classList.remove('picked'); b.setAttribute('aria-pressed', 'false'); }
-      $('play-picked').disabled = !picked.size;
+      touched = false; // the picks follow the box again: what was just played
     }
   };
 
@@ -1435,8 +1455,8 @@ const PAGE = `<!DOCTYPE html>
     } catch (e) { noteFilters("Couldn't reach the box.", true); }
   };
 
-  $('black').onclick = () => show('black');
-  $('schedule').onclick = () => post('/api/schedule');
+  $('black').onclick = async () => { if ((await show('black')).ok) touched = false; };
+  $('schedule').onclick = async () => { if ((await post('/api/schedule')).ok) touched = false; };
   // The answer shows under the button, where it was tapped.
   $('sync').onclick = async () => {
     const r = await post('/api/sync', {}, true);
@@ -1481,6 +1501,12 @@ const PAGE = `<!DOCTYPE html>
     if (key === 'black') return ['black'];
     if (!key || key === 'null') return [];
     return key.split(' + ').filter((p) => p.startsWith('#') || filters.includes(p));
+  }
+
+  // What Play starts out with picked: what is playing, but not Black (which
+  // has a button of its own). ['#nick', 'Halloween grownup'] stays as it is.
+  function startingPicks(playing) {
+    return playing.filter((x) => x !== 'black');
   }
 
   // A tag as words: 'halloween-grownup' -> 'Halloween grownup', 'upload' -> 'Uploads'.

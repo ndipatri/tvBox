@@ -1,0 +1,3 @@
+- [x] Start Play's picks as what is playing, until a choice is tapped
+- [x] Follow the box again after Play, Black or Back to schedule
+- [x] Test and spec
