@@ -1,0 +1,3 @@
+- [x] remove-all endpoint
+- [x] Delete all button that asks first
+- [x] Tests and spec
