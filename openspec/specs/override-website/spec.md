@@ -162,7 +162,7 @@ The website SHALL list every tag in use that no GitHub filter names (in its any 
 - **THEN** they read `Halloween grownup`, `Favorites` and `Uploads`
 
 ### Requirement: The page highlights the playing tags
-The page SHALL show the status line inside the Play section, above its buttons, and SHALL outline, and mark as current, the buttons of the tags and filters the status names (picked under Play, or a filter playing on its schedule), or Black when it is black, and none otherwise or when the box can't be reached, following the status as it changes.
+The page SHALL show the status line inside the Play section, above its buttons, and SHALL outline, and mark as current, the buttons of the tags and filters the status names (picked under Play, or a filter playing on its schedule), or Black when it is black, and none otherwise or when the box can't be reached, following the status as it changes. Until someone taps a tag or filter, the page SHALL also pick the playing tags and filters (not Black), so tapping one unpicks it and Play plays the rest; after Play, Black or Back to schedule the picks SHALL follow the status again.
 
 #### Scenario: the page shows the status under Play and outlines what is playing
 - **GIVEN** the website running
@@ -174,6 +174,12 @@ The page SHALL show the status line inside the Play section, above its buttons, 
 - **GIVEN** the page, and the filters Halloween kid and Thanksgiving
 - **WHEN** the status is `#halloween + #thanksgiving (override until cleared)`, `#favorites + Halloween kid (override until 6:30 PM)`, `Thanksgiving (scheduled until 11:00 PM)`, `black (nothing scheduled)`, `black (waiting for the clock to be set)`, and no status
 - **THEN** the playing choices are the tags `halloween` and `thanksgiving`; the tag `favorites` and the filter Halloween kid; the filter Thanksgiving; black; black; and none
+
+#### Scenario: the page starts the Play picks as what is playing
+- **GIVEN** the page, with `#nick + Halloween grownup (override until cleared)` playing
+- **WHEN** it is opened, and no choice has been tapped
+- **THEN** Nick and Halloween grownup start out picked (black never is), following the status until a choice is tapped
+- **AND** after Play, Black or Back to schedule the picks follow the status again
 
 ### Requirement: Says which way the TV faces
 The website SHALL let anyone on the home network say, without the PIN, whether the TV is now portrait or landscape. It SHALL save the choice on the box, log it, and offer Portrait and Landscape on the page, marking the one saved (portrait when nothing is saved).
