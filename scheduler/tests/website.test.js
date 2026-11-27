@@ -239,7 +239,7 @@ test('the page shows the status under Play and outlines what is playing', async 
   assert.ok(/button\.current \{[^}]*outline/.test(page), 'the playing buttons are outlined');
   assert.ok(page.includes("setAttribute('aria-current', 'true')"), 'and marked as current');
   const refresh = page.slice(page.indexOf('async function refresh()'), page.indexOf('let filterNames'));
-  assert.ok(refresh.includes('outline(playingChoices(r.status, filterNames))'), 'the outline follows the status');
+  assert.ok(refresh.includes('const playing = playingChoices(r.status, filterNames);') && refresh.includes('outline(playing);'), 'the outline follows the status');
   assertScriptCompiles(page);
 });
 
@@ -265,6 +265,25 @@ test('the page works out which tags are playing from the status', async () => {
     [null, []],
   ];
   for (const [status, choices] of cases) assert.deepEqual(Array.from(playingChoices(status, filters)), choices, String(status));
+});
+
+test('the page starts the Play picks as what is playing', async () => {
+  const startingPicks = await pageFunction('startingPicks');
+  assert.deepEqual(Array.from(startingPicks(['#nick', 'Halloween grownup'])), ['#nick', 'Halloween grownup']);
+  assert.deepEqual(Array.from(startingPicks(['black'])), [], 'black is never picked');
+  assert.deepEqual(Array.from(startingPicks([])), []);
+  const page = (await site().call('GET', '/advanced')).body;
+  const refresh = page.slice(page.indexOf('async function refresh()'), page.indexOf('let filterNames'));
+  assert.ok(refresh.includes('pickPlaying(playing)'), 'the picks follow the status');
+  const pickPlaying = page.slice(page.indexOf('function pickPlaying('), page.indexOf('function pickButton('));
+  assert.ok(pickPlaying.includes('if (touched) return;') && pickPlaying.includes('startingPicks(playing)'), 'until a choice is tapped');
+  const pickButton = page.slice(page.indexOf('function pickButton('), page.indexOf('async function load()'));
+  assert.ok(pickButton.includes('touched = true;'), 'tapping a choice stops the following');
+  const play = page.slice(page.indexOf("$('play-picked').onclick"), page.indexOf('// ---- Adding and removing photos'));
+  assert.ok(play.includes('touched = false'), 'after Play the picks follow the box again');
+  assert.ok(/\$\('black'\)\.onclick = [^\n]*touched = false/.test(page), 'and after Black');
+  assert.ok(/\$\('schedule'\)\.onclick = [^\n]*touched = false/.test(page), 'and after Back to schedule');
+  assertScriptCompiles(page);
 });
 
 // ---- Which way the TV faces ----
