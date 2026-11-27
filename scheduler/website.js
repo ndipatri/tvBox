@@ -436,6 +436,21 @@ function createWebsite(options) {
     return ok('Removed ' + name + '.');
   }
 
+  // POST /api/uploads/remove-all: deletes every upload (not the videos from
+  // GitHub), and their box tags, in one go.
+  async function removeAllUploads() {
+    const names = uploadNames();
+    for (const name of names) {
+      const file = PHOTOS_DIR + '/' + name;
+      if (options.beforeRemove) await options.beforeRemove(file);
+      removeFile(file);
+      dropTags(logic.PHOTOS + '/' + name);
+    }
+    log('Removed all ' + names.length + (names.length === 1 ? ' upload' : ' uploads') + ' (from the website)');
+    await filtersChanged();
+    return ok(names.length === 1 ? 'Removed 1 upload.' : 'Removed ' + names.length + ' uploads.');
+  }
+
   // POST /api/visitor/play { tag, keep: [name…] }: the easy page's last step.
   // Every other upload with the visitor's tag (from an earlier visit under
   // the same name) is deleted, so only `keep` is left under it, then the tag
@@ -653,6 +668,7 @@ function createWebsite(options) {
       try { parsed = JSON.parse(body || '{}'); } catch (e) { return fail('Bad request.'); }
       return route === 'POST /api/uploads/check' ? checkBatch(parsed) : removeUpload(parsed);
     }
+    if (route === 'POST /api/uploads/remove-all') return removeAllUploads();
     if (route === 'GET /api/log') {
       const text = readTail(videoRoot + '/scheduler.log', LOG_TAIL_BYTES);
       const lines = text === null ? [] : text.split('\n').filter((l) => l.trim() !== '');
@@ -813,6 +829,7 @@ const PAGE = `<!DOCTYPE html>
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   button, select { font: inherit; color: var(--text); background: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 10px; padding: 12px; width: 100%; }
   button { cursor: pointer; }
+  button.danger { margin-top: 12px; color: #ff8a80; border-color: #8a3b35; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 600; }
   .row { display: flex; gap: 10px; }
   .row > * { flex: 1; }
@@ -905,6 +922,7 @@ const PAGE = `<!DOCTYPE html>
     <div class="hint">Tap ☆ to add one to Favorites, or add any tag to put it in the filters with that tag. Each change is saved straight away. Videos from GitHub take their tags from their folders there.</div>
     <div id="taglist">Loading…</div>
     <datalist id="tagnames"></datalist>
+    <button id="remove-all" class="danger" hidden>Delete all</button>
   </div>
 
   <h2>Filters</h2>
@@ -1152,6 +1170,14 @@ const PAGE = `<!DOCTYPE html>
     loadItems();
   }
 
+  // Delete all: every photo and video added here, after asking.
+  let uploadCount = 0;
+  $('remove-all').onclick = async () => {
+    if (!confirm(removeAllQuestion(uploadCount))) return;
+    await post('/api/uploads/remove-all');
+    loadItems();
+  };
+
   // ---- Tags ----
 
   let tagNames = []; // every tag in use, for suggestions and the filter editor
@@ -1206,6 +1232,8 @@ const PAGE = `<!DOCTYPE html>
       }
       const list = $('taglist');
       list.textContent = d.items.length ? '' : 'Nothing added yet.';
+      uploadCount = d.items.length; // the list is the uploads
+      $('remove-all').hidden = !uploadCount;
       let group = null;
       for (const item of d.items) {
         if (item.group !== group) {
@@ -1481,6 +1509,12 @@ const PAGE = `<!DOCTYPE html>
     if (key === 'black') return ['black'];
     if (!key || key === 'null') return [];
     return key.split(' + ').filter((p) => p.startsWith('#') || filters.includes(p));
+  }
+
+  // What Delete all asks first.
+  function removeAllQuestion(count) {
+    return 'Delete all ' + count + (count === 1 ? ' photo or video' : ' photos and videos') +
+      " added to the box? This can't be undone. Videos from GitHub stay.";
   }
 
   // A tag as words: 'halloween-grownup' -> 'Halloween grownup', 'upload' -> 'Uploads'.

@@ -946,6 +946,37 @@ test('removing an upload drops its box tags', async () => {
   assert.equal(u.filtersChanged, 1, 'the player is told');
 });
 
+test('the website removes every upload at once', async () => {
+  const u = uploads();
+  u.put('00001-a.jpg');
+  u.put('00002-b.mp4');
+  fs.mkdirSync(u.root + '/halloween');
+  fs.writeFileSync(u.root + '/halloween/fuzzy.mp4', 'v');
+  fs.writeFileSync(u.root + '/tags.json', JSON.stringify({ tags: { 'photos/00001-a.jpg': ['family'] } }));
+  const r = await u.call('POST', '/api/uploads/remove-all');
+  assert.equal(r.status, 200, r.body);
+  assert.deepEqual(u.photos(), []);
+  assert.ok(fs.existsSync(u.root + '/halloween/fuzzy.mp4'), 'the videos from GitHub stay');
+  const tags = JSON.parse(fs.readFileSync(u.root + '/tags.json', 'utf8')).tags;
+  assert.ok(!('photos/00001-a.jpg' in tags), JSON.stringify(tags));
+  assert.equal(r.json.message, 'Removed 2 uploads.');
+  assert.ok(u.logs.includes('Removed all 2 uploads (from the website)'), u.logs.join('\n'));
+  assert.equal(u.removed.length, 2, 'each taken off mpv first');
+  assert.equal(u.filtersChanged, 1, 'the player is told');
+});
+
+test('the page offers Delete all, and asks first', async () => {
+  const page = (await site().call('GET', '/advanced')).body;
+  const section = page.slice(page.indexOf('<h2>Photos and videos</h2>'), page.indexOf('<h2>Filters</h2>'));
+  assert.ok(section.includes('id="remove-all"') && section.includes('>Delete all<'), 'a Delete all button in the section');
+  assert.ok(page.includes("$('remove-all').hidden = !uploadCount;"), 'shown only while there are uploads');
+  assert.ok(/if \(!confirm\(removeAllQuestion\(uploadCount\)\)\) return;\s*await post\('\/api\/uploads\/remove-all'\)/.test(page), 'asks before deleting');
+  const removeAllQuestion = await pageFunction('removeAllQuestion');
+  assert.equal(removeAllQuestion(12), "Delete all 12 photos and videos added to the box? This can't be undone. Videos from GitHub stay.");
+  assert.equal(removeAllQuestion(1), "Delete all 1 photo or video added to the box? This can't be undone. Videos from GitHub stay.");
+  assertScriptCompiles(page);
+});
+
 test("the website refuses to remove something that isn't an upload", async () => {
   const u = uploads();
   u.put('.upload-123');
